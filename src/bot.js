@@ -13,10 +13,10 @@ const client = new Client({ intents: [Intents.FLAGS.GUILDS] });
 
 // Load Commands
 client.commands = new Collection();
-const commandFiles = fs.readdirSync('./src/commands').filter(file => file.endsWith('.js'));
+const commandFiles = fs.readdirSync(`${__dirname}/commands`).filter(file => file.endsWith('.js'));
 
 for (const file of commandFiles) {
-    const command = require(`./commands/${file}`);
+    const command = require(`${__dirname}/commands/${file}`);
     // Set a new item in the Collection
 	// With the key as the command name and the value as the exported module
 	client.commands.set(command.data.name, command);
@@ -58,8 +58,7 @@ client.once('ready', () => {
 client.on('interactionCreate', async interaction => {
     if (!interaction.isCommand()) return;
 
-    const command = client.commands.get(interaction.commandName);
-    
+    const command = client.commands.get(interaction.commandName);   
     if (!command) return;
 
 	try {
