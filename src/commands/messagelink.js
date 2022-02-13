@@ -1,5 +1,6 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { MessageEmbed, MessageActionRow, MessageButton } = require('discord.js');
+const { execPath } = require('process');
 const { URL } = require('url')
 
 module.exports = {
@@ -25,42 +26,58 @@ module.exports = {
 			return ;
 		}
 
-		const start = async (message) => {
-			let content = new String()
-			if (content.length < 53) {
-				content = message.content.substring(0, 50)+'...'
-			} else {
-				content = message.content
-			}
+		const start = async (message, author) => {
+			console.log(message);
+			console.log(author);
+			try {
+				let content = String(message.content);
+				let lenFormatted = content.match(/<([^>]*)>/);
+				if (lenFormatted) {
+					lenFormatted = lenFormatted.reduce((previousValue, currentValue) => previousValue + (currentValue.length + 2), 0); 
+				} else { 
+					lenFormatted = 0
+				};
+				if ((content.length - lenFormatted) < 53) {
+					content = content.substring(0, 50 + lenFormatted)+'...'
+				};
 
-			const embed = new MessageEmbed()
-				.setDescription()
-				.setAuthor({ name: message.author.username, iconURL: message.author.avatarURL() });
-				
-			if (interaction.user != message.author) {
-				embed.setFooter({ text: `${interaction.user.username} announced this embed`, iconURL: interaction.user.avatarURL() })
-			};
+				const embed = new MessageEmbed()
+					.setDescription(content)
+					.setColor(author.hexAccentColor)
+					.setAuthor({ name: author.username, iconURL: author.avatarURL() });
+					
+				if (interaction.user != author) {
+					embed.setFooter({ text: `${interaction.user.username} announced this embed`, iconURL: interaction.user.avatarURL() })
+				};
 
-			const row = new MessageActionRow()
-				.addComponents(
-					new MessageButton()
-						.setURL(new String(message.url).toString())
-						.setLabel('Open')
-						.setStyle('LINK'));
+				const row = new MessageActionRow()
+					.addComponents(
+						new MessageButton()
+							.setURL(new String(message.url).toString())
+							.setLabel('Open')
+							.setStyle('LINK'));
 
-			const msgsend = async (user) => {
-				console.log(user.hexAccentColor)
-				embed.setColor(user.hexAccentColor)
 				await interaction.options.getChannel('channel').send({ embeds: [embed], components: [row] });
-				await interaction.reply({ embeds: [{ description: 'Embed sent!' }], ephemeral: true })
+				await interaction.reply({ embeds: [{ description: 'Embed sent!' }], ephemeral: true });
+			} catch(error) {
+				console.error(error);
+				const embed = new MessageEmbed()
+					.setColor('#f04747')
+					.setDescription('There was an error while executing this command!');
+				await interaction.reply({ embeds: [embed], ephemeral: true });
 			}
-
-			message.author.fetch({ force: true })
-				.then((user) => msgsend(user))
 		};
 
-		await interaction.channel.messages
-			.fetch(new URL(interaction.options.getString('link')).pathname.split("/")[4])
-			.then((message) => {start(message)});
+		const messageLink = new URL(interaction.options.getString('link')).pathname.split("/");
+		const channelId = messageLink[3];
+		const messageId = messageLink[4];
+		
+		await client.channels.fetch(channelId).then((channel) => {
+			channel.messages.fetch(messageId).then((message) => {
+				message.author.fetch([true]).then((author) => {
+					start(message, author);
+				});
+			})
+		})
 	},
 };
