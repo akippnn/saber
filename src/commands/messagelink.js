@@ -27,22 +27,14 @@ module.exports = {
 		}
 
 		const start = async (message, author) => {
-			console.log(message);
-			console.log(author);
 			try {
-				let content = String(message.content);
-				let lenFormatted = content.match(/<([^>]*)>/);
-				if (lenFormatted) {
-					lenFormatted = lenFormatted.reduce((previousValue, currentValue) => previousValue + (currentValue.length + 2), 0); 
-				} else { 
-					lenFormatted = 0
-				};
-				if ((content.length - lenFormatted) < 53) {
-					content = content.substring(0, 50 + lenFormatted)+'...'
+				let msg = String(message.content)
+				if (msg.length < 53) {
+					msg = msg.substring(0, msg.substring(0, 50).lastIndexOf(" "))+'...'
 				};
 
 				const embed = new MessageEmbed()
-					.setDescription(content)
+					.setDescription(msg)
 					.setColor(author.hexAccentColor)
 					.setAuthor({ name: author.username, iconURL: author.avatarURL() });
 					
