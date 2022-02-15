@@ -22,39 +22,80 @@ for (const file of commandFiles) {
 	client.commands.set(command.data.name, command);
 }
 
+// Default channel object for the console
+var conChannel;
+
 // Once ready
 client.once('ready', () => {
 	console.log('Ready!');
-    let messageChannel = client.channels.cache.get('877488673250213930')
+    conChannel = client.channels.cache.get(process.env.defaultChannelId);
 
+    // Create an readline interface to allow input
     const rl = require('readline').createInterface({
         input: process.stdin,
         output: process.stdout
     });
 
+    // Ask for input
     function ask() {
-        rl.question(`${messageChannel.name}: `, say => {
-            switch (say.split(" ")[0]) {
-                case "/delete":
-                    return new Promise(() => { 
-                        messageChannel.messages.fetch(say.split(" ")[1])
-                        .then(message => message.delete())
-                    });
-                case "/channel":
-                    return new Promise(() => {
-                        messageChannel = client.channels.cache.get(say.split(" ")[1])
-                    });
-                default:
-                    messageChannel.send(say);
-                    break;
-            }
-            ask()
+        rl.question(`Send to ${conChannel.name} >> `, say => {
+            try {
+                switch (say.split(" ")[0]) {
+                    // Deletes a message from passed message ID
+                    case "/delete":
+                        return new Promise(() => { 
+                            conChannel.messages.fetch(say.split(" ")[1])
+                                .then(message => {
+                                    message.delete()
+                                    console.log(`[DELETE] ${message.author.username}#${message.author.discriminator}: ${message}`)
+                                })
+                            ask() // Recursively ask
+                        });
+
+                    // Changes the channel object on conChannel
+                    case "/channel":
+                        return new Promise(() => {
+                            conChannel = client.channels.cache.get(say.split(" ")[1])
+                            ask() // Recursively ask
+                        });
+
+                    // Send a message on default
+                    default:
+                        conChannel.send(say)
+                            .then(console.log(`[SENT ${conChannel}]`));
+                            ask() // Recursively ask
+                        break;
+                };
+            } catch (error) {
+                console.error(error)
+            };
+
         });
     }
+
     ask()
 });
 
-// On interactionCreate
+// Logs all message events the bot receives
+client.on('messageCreate', message => {
+    // A function to clear the current line and print the string passed to the function.
+    function consoleMsg(string) {
+        process.stdout.clearLine();
+        process.stdout.cursorTo(0);
+        console.log(string);
+    };
+    
+    if (message.channel == conChannel) {
+        consoleMsg(`[${message.id}] ${message.author.username}#${message.author.discriminator}: ${message}`)
+    } else {
+        consoleMsg(
+            '\x1b[2m%s\x1b[0m', // Dim color for channels that weren't selected
+            `[${message.id} > ${message.channel.name} ${message.channel}] ${message.author.username}#${message.author.discriminator}: ${message}`
+        )
+    }
+});
+
+// Execute commands and throw errors
 client.on('interactionCreate', async interaction => {
     if (!interaction.isCommand()) return;
 
@@ -72,5 +113,5 @@ client.on('interactionCreate', async interaction => {
 	}
 });
 
-// Login
+// Start the bot
 client.login(process.env.DISCORD_TOKEN);
